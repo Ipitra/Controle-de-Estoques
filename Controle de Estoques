@@ -1,0 +1,179 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_NOME 50
+#define ARQUIVO_ESTOQUE "estoque.txt"
+
+// Função para adicionar um novo item ao estoque
+void adicionarItem() {
+    FILE *arquivo;
+    char nome[MAX_NOME];
+    int quantidade;
+
+    arquivo = fopen(ARQUIVO_ESTOQUE, "a");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo de estoque!\n");
+        return;
+    }
+
+    printf("Digite o nome do item: ");
+    scanf(" %[^\n]", nome); // Lê a linha inteira, incluindo espaços
+
+    printf("Digite a quantidade: ");
+    if (scanf("%d", &quantidade) != 1) {
+        printf("Entrada inválida para quantidade.\n");
+        fclose(arquivo);
+        // Limpar o buffer de entrada
+        while (getchar() != '\n');
+        return;
+    }
+    if (quantidade < 0) {
+        printf("A quantidade não pode ser negativa.\n");
+        fclose(arquivo);
+        return;
+    }
+
+    fprintf(arquivo, "%s\n", nome);
+    fprintf(arquivo, "%d\n", quantidade);
+
+    fclose(arquivo);
+    printf("Item adicionado com sucesso!\n");
+}
+
+// Função para remover um item do estoque
+void removerItem() {
+    FILE *arquivo, *tempArquivo;
+    char nomeRemover[MAX_NOME];
+    char nomeAtual[MAX_NOME];
+    int quantidadeAtual;
+    int encontrado = 0;
+
+    arquivo = fopen(ARQUIVO_ESTOQUE, "r");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo de estoque!\n");
+        return;
+    }
+
+    tempArquivo = fopen("temp.txt", "w");
+    if (tempArquivo == NULL) {
+        printf("Erro ao criar arquivo temporário!\n");
+        fclose(arquivo);
+        return;
+    }
+
+    printf("Digite o nome do item a remover: ");
+    scanf(" %[^\n]", nomeRemover);
+
+    while (fgets(nomeAtual, MAX_NOME, arquivo) != NULL) {
+        nomeAtual[strcspn(nomeAtual, "\n")] = 0; // Remove a quebra de linha
+
+        if (fgets((char *)&quantidadeAtual, sizeof(int), arquivo) != NULL) {
+            // Converter a string lida para inteiro
+            char quantidadeStr[20];
+            strcpy(quantidadeStr, (char *)&quantidadeAtual);
+            quantidadeAtual = atoi(quantidadeStr);
+
+            if (strcmp(nomeAtual, nomeRemover) == 0 && encontrado == 0) {
+                encontrado = 1;
+                printf("Item '%s' removido com sucesso!\n", nomeRemover);
+            } else {
+                fprintf(tempArquivo, "%s\n", nomeAtual);
+                fprintf(tempArquivo, "%d\n", quantidadeAtual);
+            }
+        } else {
+            // Arquivo mal formatado, interromper
+            break;
+        }
+    }
+
+    fclose(arquivo);
+    fclose(tempArquivo);
+
+    if (encontrado) {
+        remove(ARQUIVO_ESTOQUE);
+        rename("temp.txt", ARQUIVO_ESTOQUE);
+    } else {
+        remove("temp.txt");
+        printf("Item '%s' não encontrado no estoque.\n", nomeRemover);
+    }
+}
+
+// Função para listar todos os itens do estoque
+void listarEstoque() {
+    FILE *arquivo;
+    char nome[MAX_NOME];
+    int quantidade;
+
+    arquivo = fopen(ARQUIVO_ESTOQUE, "r");
+    if (arquivo == NULL) {
+        printf("Estoque vazio ou erro ao abrir o arquivo.\n");
+        return;
+    }
+
+    printf("\n===== Conteúdo do Estoque =====\n");
+    while (fgets(nome, MAX_NOME, arquivo) != NULL) {
+        nome[strcspn(nome, "\n")] = 0; // Remove a quebra de linha
+        if (fscanf(arquivo, "%d\n", &quantidade) == 1) {
+            printf("Item: %s, Quantidade: %d\n", nome, quantidade);
+        } else {
+            printf("Erro ao ler a quantidade do item '%s'. Formato do arquivo pode estar incorreto.\n", nome);
+            break;
+        }
+    }
+    printf("===============================\n");
+
+    fclose(arquivo);
+}
+
+int main() {
+    int opcao;
+    char continuar;
+
+    do {
+        printf("\n==================================\n");
+        printf("        Controle de Estoque\n");
+        printf("==================================\n");
+        printf("Selecione uma opção:\n");
+        printf("1. Adicionar Item\n");
+        printf("2. Remover Item\n");
+        printf("3. Listar Estoque\n");
+        printf("4. Sair\n");
+        printf("Opção: ");
+
+        if (scanf("%d", &opcao) != 1) {
+            printf("Opção inválida! Tente novamente.\n");
+            // Limpar o buffer de entrada
+            while (getchar() != '\n');
+            continuar = 's';
+            continue;
+        }
+
+        switch (opcao) {
+            case 1:
+                adicionarItem();
+                break;
+            case 2:
+                removerItem();
+                break;
+            case 3:
+                listarEstoque();
+                break;
+            case 4:
+                printf("Obrigado por usar o Controle de Estoques! Até a próxima.\n");
+                continuar = 'n';
+                break;
+            default:
+                printf("Opção inválida! Tente novamente.\n");
+                continuar = 's';
+        }
+
+        if (opcao != 4) {
+            printf("\nDeseja realizar outra operação? (s/n): ");
+            scanf(" %c", &continuar);
+        }
+
+    } while (continuar == 's' || continuar == 'S');
+
+    return 0;
+}
